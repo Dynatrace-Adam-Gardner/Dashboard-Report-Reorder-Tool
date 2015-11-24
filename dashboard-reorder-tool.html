@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard Report Re-Order Tool</title>
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+  
+  <style>
+  #sortable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
+  #sortable li { margin: 0 3px 3px 3px; padding: 0.4em; padding-left: 1.5em; font-size: 1.4em; height: 18px; }
+  #sortable li span { position: absolute; margin-left: -1.3em; }
+  </style>
+  <script>
+  $(function() {
+    $( "#sortable" ).sortable();
+    $( "#sortable" ).disableSelection();
+	
+	document.getElementById('files').addEventListener('change', handleFileSelect, false);
+	
+  });
+  </script>
+  <style>
+  #xml-output
+  {
+   margin: 2em;
+   padding: 1em;
+   border-radius: 20px;
+   max-width: 100%;
+   background: #ebebeb;
+  }
+  </style>
+</head>
+<body>
+
+
+
+<div>
+<h1>XML Dashboard Re-Order Tool</h1>
+<h2>Overview</h2>
+<p>This tool allows you to quickly and easily alter the order of dashlets are they're reported (not visual order).</p>
+
+<h2>How to Use</h2>
+<ol>
+ <li>Choose a dashboard XML file</li>
+ <li>Re-order the dashlets</li>
+ <li>Click the "Generate New XML" button</li>
+ <li>New XML will be generated and displayed. Manually save this as a <strong>*.dashboard.xml</strong> file</li>
+</ol>
+
+<hr />
+
+<h2>Step 1: Input File</h2>
+<input type="file" id="files" name="files[]" multiple/>
+<output id="list"></output>
+
+<h2>Step 2: Re-order Dashlets</h2>
+<ul id="sortable"></ul>
+
+<h2>Step 3: Generate New XML</h2>
+<button type="button" onclick="reorderDashboard()">Generate New XML</button>
+
+
+<div id="xml-output">
+</div>
+
+<script>
+var rawXML;
+var portletNodes;
+var $xml;
+
+function handleFileSelect(evt)
+{
+var files = evt.target.files; // FileList object
+
+	for (var i = 0, file; file = files[i]; i++) 
+	{
+
+	  var reader = new FileReader();
+
+	  // File reading is Async. Capture in here.
+	  reader.onload = (function(theFile)
+	  {
+	 
+		// This function fires when file has been read. Load into variable.
+		return function(res)
+		{
+		  // Parse XML and setup object
+		  rawXML = res.target.result;
+		  processXML();
+		  
+		}
+	  })(file);
+
+	  // Read input file as plain text.
+	  reader.readAsText(file);
+	}
+}
+
+function processXML()
+{
+	xmlDoc = $.parseXML(rawXML);
+	$xml = $(xmlDoc),
+	$portletNodes = $xml.find("portletconfig");
+	
+	$.each($portletNodes, function(index,object)
+	{
+	  $id = $(object).attr('id');
+	  $name = $(object).attr('name');
+	 
+	 // Build UL List
+	 $("#sortable").append('<li data-id="' + $id + '">' + $name + '</li>');
+	});
+}
+
+// This function re-orders the XML and prints to DIV.
+function reorderDashboard()
+{
+ // For each list item, find the relevant portletconfig node in the list of portletconfigs/
+ // Now get the reportconfig child node and set that to the indexToSet value
+ // Then present new XML in div so user can manually save.
+ 
+ $('#sortable li').each(function(indexToSet,listItem){
+	$portletConfigNode = findNode(listItem);
+	
+	$.each($portletConfigNode.children(), function(index,object)
+	{
+	 $reportPosition = $(object).attr('reportposition');
+	 
+	 // This is where the new order is set.
+	 if ($reportPosition !== undefined)
+	 {
+		$(object).attr('reportposition',indexToSet);
+	 }
+	});
+	
+ });
+ 
+ // Output new XML to page.
+ var oSerializer = new XMLSerializer(); 
+ var xmlString = oSerializer.serializeToString($xml[0]);
+ $("#xml-output").text(xmlString);
+ 
+}
+
+function findNode(listItem)
+{
+  $listItemID = $(listItem).data("id");
+  $ret = null;
+  
+ $.each($portletNodes, function(index, node)
+ {
+  
+  $id = $(node).attr('id');
+  
+  if ($id == $listItemID)
+  {
+    $ret = $(node);
+  }
+  
+ });
+ 
+ return $ret;
+}
+</script>
+
+</body>
+</html>
